@@ -1,0 +1,345 @@
+{
+  "name": "invoice agent",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "REPLACE_WITH_YOUR_RESOURCE_ID",
+          "mode": "list",
+          "cachedResultName": "invoice agent",
+          "cachedResultUrl": "RECONFIGURE_AFTER_IMPORT"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4ee5e08e-7cf7-43a2-8f33-0a04c593a4a4",
+      "name": "Google Drive Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {
+          "binaryPropertyName": "data"
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "c7d97113-4dce-434b-93cd-332f4b5d17e3",
+      "name": "Download file"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "3e95ae45-a7d3-4378-b892-0711fb74100c",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.text }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "venodor",
+              "description": "it should extract vendor",
+              "required": true
+            },
+            {
+              "name": "address",
+              "description": "it should extract address",
+              "required": true
+            },
+            {
+              "name": "email",
+              "description": "it should extract email",
+              "required": true
+            },
+            {
+              "name": "payment method",
+              "description": "it should extract payment method",
+              "required": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "23e56066-f13f-4731-90b6-1a2c2dcb5d47",
+      "name": "Information Extractor"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        560,
+        208
+      ],
+      "id": "b656e0cd-100c-44fb-8558-ed351d0cacfb",
+      "name": "Google Gemini Chat Model"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_YOUR_RESOURCE_ID",
+          "mode": "list",
+          "cachedResultName": "invoice agent",
+          "cachedResultUrl": "RECONFIGURE_AFTER_IMPORT"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "RECONFIGURE_AFTER_IMPORT"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "venodor": "={{ $json.output.venodor }}",
+            "address": "={{ $json.output.address }}",
+            "email": "={{ $json.output.email }}",
+            "payment method": "={{ $json.output['payment method'] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "venodor",
+              "displayName": "venodor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "address",
+              "displayName": "address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "payment method",
+              "displayName": "payment method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        976,
+        0
+      ],
+      "id": "c94a811e-421b-43ca-8896-3af62d549dd2",
+      "name": "Append row in sheet"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3-flash-preview",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3-flash-preview"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=vendor: {{ $json.venodor }}\naddress: {{ $json.address }}\nemail: {{ $json.email }}\npayment method: {{ $json['payment method'] }}"
+            },
+            {
+              "content": "=You are a professional finance and accounts assistant.\n\nYour task is to generate a clear, professional email notifying the finance team that a new invoice has been received and processed.\n\nRules:\n- Write the email in a professional business tone.\n- Use only the information provided by the user.\n- Do not invent or modify any values.\n- If a field is missing or empty, omit that line instead of guessing.\n- Organize the information in a clean and readable format.\n- Include a short subject line.\n- End the email with a polite closing.\n\nThe email should follow this structure:\n\nSubject: New Invoice Received \n\nHello Team,\n\nA new invoice has been received and processed successfully. Please find the invoice details below:\n\n\nPlease review the invoice and proceed with any required accounting or record-keeping actions.\n\nThank you.\n\nBest Regards,\nFinance Automation Assistant also map subject line seperatly so that i can map in nedxt node\n",
+              "role": "model"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1184,
+        0
+      ],
+      "id": "42eb3c6b-3fdf-42a2-b7aa-96184982c665",
+      "name": "Message a model"
+    },
+    {
+      "parameters": {
+        "sendTo": "YOUR_EMAIL@example.com",
+        "subject": "New invoice Received",
+        "emailType": "text",
+        "message": "={{ $json.content.parts[2].text }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1536,
+        0
+      ],
+      "id": "bebd68fa-3115-43ec-b2a1-fe2eb4c6156e",
+      "name": "Send a message",
+      "webhookId": "RECONFIGURE_AFTER_IMPORT"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "5350c311-e733-417d-81ab-440f8db1d869",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "REDACTED"
+  },
+  "nodeGroups": [],
+  "id": "un7m2hE6v3ZlCkAB",
+  "tags": []
+}
